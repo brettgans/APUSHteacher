@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>APUSH Tutor</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <style>
         /* Reset and base styles */
         * {
@@ -273,8 +273,8 @@
                     id="messageInput" 
                     placeholder="Ask about APUSH topics, DBQs, SAQs, or historical analysis..."
                     maxlength="500"
-                >
-                <button class="send-button" id="sendButton">Send</button>
+                />
+                <button class="send-button" id="sendButton" disabled>Send</button>
             </div>
         </div>
     </div>
@@ -285,25 +285,13 @@
     </footer>
 
     <script>
+        // API endpoint for local Ollama Mistral
+        const ollamaApiUrl = "http://localhost:11434";
+
         // DOM elements
         const chatMessages = document.getElementById('chatMessages');
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
-
-        // Sample AI responses for APUSH topics
-        const sampleResponses = [
-            "Great question! The American Revolution began due to several key factors: British taxation without representation (like the Stamp Act of 1765), increased British control after the French and Indian War, and Enlightenment ideas about natural rights. The colonists felt their rights as Englishmen were being violated.",
-            
-            "The Constitution was created to address the weaknesses of the Articles of Confederation. Key compromises included the Great Compromise (bicameral legislature), the 3/5 Compromise (counting enslaved people), and the Electoral College system. Federalists supported ratification while Anti-Federalists demanded a Bill of Rights.",
-            
-            "Manifest Destiny was the 19th-century belief that American expansion across the continent was justified and inevitable. This led to the Mexican-American War, the acquisition of Texas, California, and other western territories, but also intensified the slavery debate.",
-            
-            "The Civil War had multiple causes: sectional differences over slavery, states' rights vs. federal authority, economic differences between North and South, and political conflicts like the Missouri Compromise and Kansas-Nebraska Act. Lincoln's election in 1860 was the final trigger.",
-            
-            "The New Deal consisted of programs like the CCC, WPA, and Social Security, designed to provide Relief, Recovery, and Reform during the Great Depression. It expanded federal government power and created the modern welfare state, though it faced criticism from both conservatives and progressives.",
-            
-            "The Cold War began after WWII due to ideological differences between the US and Soviet Union. Key events include the Truman Doctrine, Marshall Plan, Berlin Blockade, and formation of NATO. The policy of containment guided US foreign policy for decades."
-        ];
 
         // Add message to chat
         function addMessage(content, isUser = false) {
@@ -351,43 +339,53 @@
             }
         }
 
-        // Simulate AI response
-        function simulateAIResponse() {
-            // Random response from sample responses
-            const randomResponse = sampleResponses[Math.floor(Math.random() * sampleResponses.length)];
-            
-            // Show loading for 1-2 seconds
-            showLoading();
-            
-            setTimeout(() => {
+        // Send chat message to Ollama Mistral API
+        async function sendMessageToMistral(message) {
+            try {
+                showLoading();
+                const response = await fetch(ollamaApiUrl + "/chat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ prompt: message })
+                });
                 hideLoading();
-                addMessage(randomResponse, false);
-            }, 1000 + Math.random() * 1000); // 1-2 second delay
+
+                if (!response.ok) {
+                    addMessage("⚠️ Error: Could not get response from Mistral.", false);
+                    return;
+                }
+
+                const data = await response.json();
+
+                // Adjust this if the API response structure is different
+                const aiResponse = data.response || JSON.stringify(data);
+
+                addMessage(aiResponse, false);
+            } catch (error) {
+                hideLoading();
+                addMessage("⚠️ Error: " + error.message, false);
+            }
         }
 
-        // Send message function
+        // Send message handler
         function sendMessage() {
             const message = messageInput.value.trim();
-            
             if (message === '') return;
-            
+
             // Add user message
             addMessage(message, true);
-            
+
             // Clear input
             messageInput.value = '';
-            
-            // Disable send button temporarily
             sendButton.disabled = true;
-            
-            // Simulate AI response
-            simulateAIResponse();
-            
-            // Re-enable send button after response
-            setTimeout(() => {
+
+            // Send message to Mistral
+            sendMessageToMistral(message).then(() => {
                 sendButton.disabled = false;
                 messageInput.focus();
-            }, 2500);
+            });
         }
 
         // Event listeners
@@ -403,11 +401,10 @@
         // Auto-focus input on page load
         messageInput.focus();
 
-        // Handle input changes for better UX
+        // Enable/disable send button based on input
         messageInput.addEventListener('input', () => {
             sendButton.disabled = messageInput.value.trim() === '';
         });
     </script>
 </body>
 </html>
-const ollamaApiUrl = "http://localhost:11434";
